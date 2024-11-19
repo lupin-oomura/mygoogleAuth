@@ -8,7 +8,8 @@ app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_secret_key')
 
 # mygoogleAuth のセットアップ
-google_auth = mygoogleAuth(app)
+google_auth = mygoogleAuth()
+google_auth.setup_login_manager(app)
 
 # ルートページ
 @app.route("/")
@@ -29,7 +30,7 @@ def callback():
 
     # ユーザーをログイン
     flask_login.login_user(user)
-    return redirect("index.html")
+    return redirect(url_for("index"))
 
 # ログアウトルート
 @app.route("/logout")

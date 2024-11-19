@@ -33,11 +33,11 @@ class User(UserMixin):
         )
 
 class mygoogleAuth:
-    def __init__(self, app):
-        self.app = app
-        self.login_manager = LoginManager()
-        self.login_manager.init_app(app)
-        self.login_manager.login_view = 'login'  # 未認証時にリダイレクトするビューを設定
+    def __init__(self):
+        # self.app = app
+        # self.login_manager = LoginManager()
+        # self.login_manager.init_app(app)
+        # self.login_manager.login_view = 'login'  # 未認証時にリダイレクトするビューを設定
 
         # 環境変数からGoogle OAuth2設定を読み込み
         self.GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
@@ -61,6 +61,15 @@ class mygoogleAuth:
         self.authorization_endpoint = self.google_provider_cfg.get("authorization_endpoint")
         self.token_endpoint = self.google_provider_cfg.get("token_endpoint")
         self.userinfo_endpoint = self.google_provider_cfg.get("userinfo_endpoint")
+
+        # # Flask-Loginのuser_loaderを登録
+        # self.login_manager.user_loader(self.load_user)
+
+    def setup_login_manager(self, app) :
+        self.app = app
+        self.login_manager = LoginManager()
+        self.login_manager.init_app(app)
+        self.login_manager.login_view = 'login'  # 未認証時にリダイレクトするビューを設定
 
         # Flask-Loginのuser_loaderを登録
         self.login_manager.user_loader(self.load_user)
