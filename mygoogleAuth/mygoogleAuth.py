@@ -33,7 +33,7 @@ class User(UserMixin):
         )
 
 class mygoogleAuth:
-    def __init__(self):
+    def __init__(self, endpoint_callback:str):
         # self.app = app
         # self.login_manager = LoginManager()
         # self.login_manager.init_app(app)
@@ -64,6 +64,7 @@ class mygoogleAuth:
 
         # # Flask-Loginのuser_loaderを登録
         # self.login_manager.user_loader(self.load_user)
+        self.endpoint_callback = endpoint_callback
 
     def setup_login_manager(self, app) :
         self.app = app
@@ -101,7 +102,7 @@ class mygoogleAuth:
         """Google認証のためのリダイレクトURLを生成してリダイレクト"""
         request_uri = self.client.prepare_request_uri(
             self.authorization_endpoint,
-            redirect_uri=url_for("callback", _external=True),
+            redirect_uri=url_for(self.endpoint_callback, _external=True),
             scope=["openid", "email", "profile"],
         )
         return redirect(request_uri)
@@ -117,7 +118,7 @@ class mygoogleAuth:
         token_url, headers, body = self.client.prepare_token_request(
             self.token_endpoint,
             authorization_response=request.url,
-            redirect_url=url_for("callback", _external=True),
+            redirect_url=url_for(self.endpoint_callback, _external=True),
             code=code,
         )
 

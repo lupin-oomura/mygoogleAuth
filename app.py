@@ -8,7 +8,7 @@ app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_secret_key')
 
 # mygoogleAuth のセットアップ
-google_auth = mygoogleAuth()
+google_auth = mygoogleAuth("callback") #例：subfolder.callback
 google_auth.setup_login_manager(app)
 
 # ルートページ
