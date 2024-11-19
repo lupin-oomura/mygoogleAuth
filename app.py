@@ -1,23 +1,3 @@
-"# mygoogleAuth" 
-
-## 概要
-google認証を簡単に実装するための便利ライブラリです。
-
-## 使い方
-
-### ファイル構成
-
-```
-your_project/
-├── app.py
-└── templates/
-    ├── index.html
-    └── subpage.html
-```
-
-### 各プログラム
-
-app.py: ```
 import os
 from flask import Flask, redirect, url_for, render_template
 from flask_login import login_user, logout_user, login_required
@@ -67,37 +47,3 @@ def subpage():
 
 if __name__ == "__main__":
     app.run(ssl_context="adhoc")  # 開発中は自己署名証明書を使用 (httpsにしないとGoogleAuthが通らない)
-```
-
-templates/index.html: ```
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>ホーム</title>
-</head>
-<body>
-    {% if current_user.is_authenticated %}
-        <p>こんにちは、{{ current_user.name }}!</p>
-        <a href="{{ url_for('subpage') }}">サブページへ</a><br>
-        <a href="{{ url_for('logout') }}">ログアウト</a>
-    {% else %}
-        <p><a href="{{ url_for('login') }}">Googleでログイン</a></p>
-    {% endif %}
-</body>
-</html>
-```
-
-templates/subpage.html: ```
-<!DOCTYPE html>
-<html>
-<head>
-    <title>サブページ</title>
-</head>
-<body>
-    <h1>サブページ</h1>
-    <p>これは保護されたサブページです。</p>
-    <p><a href="{{ url_for('index') }}">ホームに戻る</a></p>
-</body>
-</html>
-```
