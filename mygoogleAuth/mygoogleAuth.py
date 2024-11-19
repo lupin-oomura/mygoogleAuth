@@ -33,7 +33,7 @@ class User(UserMixin):
         )
 
 class mygoogleAuth:
-    def __init__(self, endpoint_callback:str):
+    def __init__(self, endpoint_callback:str=None):
         # self.app = app
         # self.login_manager = LoginManager()
         # self.login_manager.init_app(app)
