@@ -16,10 +16,13 @@ Google Cloud Console でプロジェクトを作成する
 
 ### pip
 
-`pip install mygoogleAuth`
+```
+pip install mygoogleAuth
+```
 
 ### .envファイルの中身
 ```
+FLASK_SECRET_KEY = "abcdefg"
 GOOGLE_CLIENT_ID = "64************ntent.com"
 GOOGLE_CLIENT_SECRET = "*******************"
 GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
