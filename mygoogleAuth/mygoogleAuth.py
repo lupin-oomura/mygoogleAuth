@@ -35,11 +35,6 @@ class User(UserMixin):
 
 class mygoogleAuth:
     def __init__(self, endpoint_callback:str=None, users_file:str=None):
-        # self.app = app
-        # self.login_manager = LoginManager()
-        # self.login_manager.init_app(app)
-        # self.login_manager.login_view = 'login'  # 未認証時にリダイレクトするビューを設定
-
         # 環境変数からGoogle OAuth2設定を読み込み
         self.GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
         self.GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
@@ -159,6 +154,7 @@ class mygoogleAuth:
             profile_pic=userinfo.get("picture"),
         )
 
+        login_user(user)
         return user, None
 
     def get_or_create_user(self, id_, name, email, profile_pic):
