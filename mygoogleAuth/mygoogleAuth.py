@@ -5,6 +5,7 @@ from flask import redirect, url_for, request
 from flask_login import UserMixin, LoginManager, login_user, logout_user
 import requests
 from oauthlib.oauth2 import WebApplicationClient
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 class User(UserMixin):
     def __init__(self, id_, name, email, profile_pic):
@@ -33,7 +34,7 @@ class User(UserMixin):
         )
 
 class mygoogleAuth:
-    def __init__(self, endpoint_callback:str=None):
+    def __init__(self, endpoint_callback:str=None, users_file:str=None):
         # self.app = app
         # self.login_manager = LoginManager()
         # self.login_manager.init_app(app)
@@ -48,7 +49,11 @@ class mygoogleAuth:
         self.client = WebApplicationClient(self.GOOGLE_CLIENT_ID)
 
         # ユーザー管理のためのJSONファイルパス
-        self.users_file = os.path.join(os.path.dirname(__file__), '..', 'users.json')
+        if users_file :
+            self.users_file = users_file
+        else :
+            # self.users_file = os.path.join(os.path.dirname(__file__), '..', 'mygoogleAuth_users.json')
+            self.users_file = 'mygoogleAuth_users.json'
 
         # ユーザー管理のためのロック
         self.lock = threading.Lock()
@@ -68,6 +73,7 @@ class mygoogleAuth:
 
     def setup_login_manager(self, app) :
         self.app = app
+        self.app.wsgi_app = ProxyFix(self.app.wsgi_app, x_proto=1, x_host=1)  # ProxyFixを追加
         self.login_manager = LoginManager()
         self.login_manager.init_app(app)
         self.login_manager.login_view = 'login'  # 未認証時にリダイレクトするビューを設定

@@ -9,11 +9,17 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_secret_key')
 
 # mygoogleAuth のセットアップ
 google_auth = mygoogleAuth("callback") #例：subfolder.callback
-google_auth.setup_login_manager(app)
+google_auth.setup_login_manager(app, "userinfo.json")
+google_auth.load_users()
 
 # ルートページ
 @app.route("/")
 def index():
+
+    if flask_login.current_user.is_authenticated :
+        print(f"access: {flask_login.current_user.name} - {flask_login.current_user.id} - {flask_login.current_user.email}")
+        google_auth.save_users()
+
     return render_template('index.html')
 
 # ログインルート
