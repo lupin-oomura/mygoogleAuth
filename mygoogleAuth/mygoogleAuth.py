@@ -7,6 +7,12 @@ import requests
 from oauthlib.oauth2 import WebApplicationClient
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+# ログの基本設定
+import logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+
 class User(UserMixin):
     def __init__(self, id_, name, email, profile_pic):
         self.id = id_
@@ -101,7 +107,7 @@ class mygoogleAuth:
 
     def login(self):
         """Google認証のためのリダイレクトURLを生成してリダイレクト"""
-        print("Generated redirect URI:", url_for(self.endpoint_callback, _external=True))
+        logger.debug("Generated redirect URI:", url_for(self.endpoint_callback, _external=True))
         request_uri = self.client.prepare_request_uri(
             self.authorization_endpoint,
             redirect_uri=url_for(self.endpoint_callback, _external=True),
