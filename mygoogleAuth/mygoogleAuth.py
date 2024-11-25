@@ -101,6 +101,7 @@ class mygoogleAuth:
 
     def login(self):
         """Google認証のためのリダイレクトURLを生成してリダイレクト"""
+        print("Generated redirect URI:", url_for(self.endpoint_callback, _external=True))
         request_uri = self.client.prepare_request_uri(
             self.authorization_endpoint,
             redirect_uri=url_for(self.endpoint_callback, _external=True),
