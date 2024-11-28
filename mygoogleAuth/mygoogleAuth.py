@@ -176,3 +176,12 @@ class mygoogleAuth:
     def logout(self):
         """ユーザーをログアウト"""
         logout_user()
+
+    def get_userid_byemail(self, email) :
+        for key, item in self.users.items() :
+            if item["email"] == email :
+                return key
+        return None
+
+    def get_user(self, id_):
+        return self.users.get(id_)
