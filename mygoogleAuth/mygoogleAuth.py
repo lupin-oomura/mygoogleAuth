@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 class User(UserMixin):
-    def __init__(self, id_, name, email, profile_pic):
+    def __init__(self, auth_type, id_, name, email, profile_pic):
+        self.auth_type = auth_type
         self.id = id_
         self.name = name
         self.email = email
@@ -23,6 +24,7 @@ class User(UserMixin):
     def to_dict(self):
         """ユーザーオブジェクトを辞書形式に変換"""
         return {
+            "auth_type": self.auth_type, 
             "id": self.id,
             "name": self.name,
             "email": self.email,
@@ -33,6 +35,7 @@ class User(UserMixin):
     def from_dict(data):
         """辞書データからユーザーオブジェクトを作成"""
         return User(
+            auth_type=data["auth_type"],
             id_=data["id"],
             name=data["name"],
             email=data["email"],
@@ -40,6 +43,9 @@ class User(UserMixin):
         )
 
 class mygoogleAuth:
+
+    auth_type = None
+
     def __init__(self, endpoint_callback:str=None, users_file:str=None):
         # 環境変数からGoogle OAuth2設定を読み込み
         self.GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
@@ -63,14 +69,20 @@ class mygoogleAuth:
         self.users = self.load_users()
 
         # Google Discoveryドキュメントをロード
-        self.google_provider_cfg = requests.get(self.GOOGLE_DISCOVERY_URL).json()
+        self.google_provider_cfg    = requests.get(self.GOOGLE_DISCOVERY_URL).json()
         self.authorization_endpoint = self.google_provider_cfg.get("authorization_endpoint")
-        self.token_endpoint = self.google_provider_cfg.get("token_endpoint")
-        self.userinfo_endpoint = self.google_provider_cfg.get("userinfo_endpoint")
+        self.token_endpoint         = self.google_provider_cfg.get("token_endpoint")
+        self.userinfo_endpoint      = self.google_provider_cfg.get("userinfo_endpoint")
+        self.endpoint_callback      = endpoint_callback
 
-        # # Flask-Loginのuser_loaderを登録
-        # self.login_manager.user_loader(self.load_user)
-        self.endpoint_callback = endpoint_callback
+        # LINE API設定
+        self.LINE_LOGIN_URL         = "https://access.line.me/oauth2/v2.1/authorize"
+        self.LINE_TOKEN_URL         = "https://api.line.me/oauth2/v2.1/token"
+        self.LINE_PROFILE_URL       = "https://api.line.me/v2/profile"
+        self.LINE_REDIRECT_URI      = None #login_by_lineで設定する
+        self.LINE_CLIENT_ID         = os.getenv('LINE_CLIENT_ID')
+        self.LINE_CLIENT_SECRET     = os.getenv('LINE_CLIENT_SECRET')
+
 
     def setup_login_manager(self, app) :
         self.app = app
@@ -106,7 +118,7 @@ class mygoogleAuth:
         return self.users.get(user_id)
 
     def login(self):
-        """Google認証のためのリダイレクトURLを生成してリダイレクト"""
+        self.auth_type = "google"
         logger.debug("Generated redirect URI:", url_for(self.endpoint_callback, _external=True))
         request_uri = self.client.prepare_request_uri(
             self.authorization_endpoint,
@@ -115,67 +127,100 @@ class mygoogleAuth:
         )
         return redirect(request_uri)
 
+
     def callback(self):
-        """Googleからのコールバックを処理し、ユーザー情報を取得"""
-        # 認証コードを取得
-        code = request.args.get("code")
+        code = request.args.get("code") # 認証コードを取得
         if not code:
             return None, "認証コードが提供されていません。"
 
-        # トークンリクエストの準備
-        token_url, headers, body = self.client.prepare_token_request(
-            self.token_endpoint,
-            authorization_response=request.url,
-            redirect_url=url_for(self.endpoint_callback, _external=True),
-            code=code,
-        )
+        if self.auth_type == "google" :
+            # トークンリクエストの準備
+            token_url, headers, body = self.client.prepare_token_request(
+                self.token_endpoint,
+                authorization_response=request.url,
+                redirect_url=url_for(self.endpoint_callback, _external=True),
+                code=code,
+            )
+            # トークンリクエストを送信
+            token_response = requests.post(
+                token_url,
+                headers=headers,
+                data=body,
+                auth=(self.GOOGLE_CLIENT_ID, self.GOOGLE_CLIENT_SECRET),
+            )
+            # トークンを解析
+            self.client.parse_request_body_response(token_response.text)
+            # ユーザー情報を取得
+            uri, headers, body = self.client.add_token(self.userinfo_endpoint)
+            userinfo_response = requests.get(uri, headers=headers, data=body)
+            userinfo = userinfo_response.json()
+            # メールが確認されているかチェック
+            if not userinfo.get("email_verified"):
+                return None, "ユーザーのメールが利用できないか、Googleによって確認されていません。"
 
-        # トークンリクエストを送信
-        token_response = requests.post(
-            token_url,
-            headers=headers,
-            data=body,
-            auth=(self.GOOGLE_CLIENT_ID, self.GOOGLE_CLIENT_SECRET),
-        )
+        elif self.auth_type == "line" :
+            state = request.args.get("state")
+            # トークン取得
+            token_data = {
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": self.LINE_REDIRECT_URI,
+                "client_id": self.LINE_CLIENT_ID,
+                "client_secret": self.LINE_CLIENT_SECRET,
+            }
+            token_res = requests.post(self.LINE_TOKEN_URL, data=token_data)
+            token_json = token_res.json()
+            access_token = token_json.get("access_token")
 
-        # トークンを解析
-        self.client.parse_request_body_response(token_response.text)
+            # プロフィール取得
+            headers = {"Authorization": f"Bearer {access_token}"}
+            profile_res = requests.get(self.LINE_PROFILE_URL, headers=headers)
+            profile = profile_res.json()
+            userinfo = {
+                "sub"       : profile['userId'], 
+                "name"      : profile['displayName'], 
+                "email"     : "NONE", 
+                "picture"   : profile['pictureUrl']
+            }
 
-        # ユーザー情報を取得
-        uri, headers, body = self.client.add_token(self.userinfo_endpoint)
-        userinfo_response = requests.get(uri, headers=headers, data=body)
-
-        userinfo = userinfo_response.json()
-
-        # メールが確認されているかチェック
-        if not userinfo.get("email_verified"):
-            return None, "ユーザーのメールが利用できないか、Googleによって確認されていません。"
-
-        user_id = userinfo["sub"]
-
-        # ユーザーを取得または作成
         user = self.get_or_create_user(
-            id_=user_id,
-            name=userinfo["name"],
-            email=userinfo["email"],
-            profile_pic=userinfo.get("picture"),
+            auth_type   = self.auth_type,
+            id_         = userinfo["sub"],
+            name        = userinfo["name"],
+            email       = userinfo["email"],
+            profile_pic = userinfo["picture"],
         )
 
         login_user(user)
         return user, None
 
-    def get_or_create_user(self, id_, name, email, profile_pic):
-        """ユーザーを取得するか、新規作成する"""
+
+    def login_by_line(self, redirect_uri, state="abcde"):
+        self.auth_type = "line"
+        self.LINE_REDIRECT_URI = redirect_uri
+        line_auth_url = (
+            f"{self.LINE_LOGIN_URL}?response_type=code"
+            f"&client_id={self.LINE_CLIENT_ID}"
+            f"&redirect_uri={self.LINE_REDIRECT_URI}"
+            f"&state={state}"
+            f"&scope=profile%20openid%20email"
+        )
+        return redirect(line_auth_url)
+
+
+
+    def get_or_create_user(self, auth_type, id_, name, email, profile_pic):
+        """自分のユーザーファイルにユーザー登録（or取得）"""
         user = self.users.get(id_)
         if not user:
-            user = User(id_=id_, name=name, email=email, profile_pic=profile_pic)
+            user = User(auth_type=auth_type, id_=id_, name=name, email=email, profile_pic=profile_pic)
             self.users[id_] = user
             self.save_users()
         return user
 
     def logout(self):
-        """ユーザーをログアウト"""
         logout_user()
+        self.auth_type = None
 
     def get_userid_byemail(self, email) :
         for key, item in self.users.items() :
